@@ -982,7 +982,7 @@ def run_one_off_container(container_options, project, service, options):
 
     def remove_container(force=False):
         if options['--rm']:
-            project.client.remove_container(container.id, force=True)
+            project.client.remove_container(container.id, force=force)
 
     signals.set_signal_handler_to_shutdown()
     try:
@@ -1006,9 +1006,11 @@ def run_one_off_container(container_options, project, service, options):
             project.client.stop(container.id)
             exit_code = 1
     except signals.ShutdownException:
-        project.client.kill(container.id)
-        remove_container(force=True)
-        sys.exit(2)
+        try:
+            project.client.kill(container.id)
+        finally:
+            remove_container(force=True)
+            sys.exit(2)
 
     remove_container()
     sys.exit(exit_code)

@@ -1423,6 +1423,23 @@ class CLITestCase(DockerClientTestCase):
             'simplecomposefile_simple_run_1',
             'exited'))
 
+    def test_run_rm_handles_three_sigints(self):
+        proc = start_process(self.base_dir, ['run', '-T', '--rm', 'simple', 'top'])
+        wait_on_condition(ContainerStateCondition(
+            self.project.client,
+            'simplecomposefile_simple_run_1',
+            'running'))
+
+        #[container] = self.project.containers(service_names=['simple'])
+
+        os.kill(proc.pid, signal.SIGINT)
+        os.kill(proc.pid, signal.SIGINT)
+        os.kill(proc.pid, signal.SIGINT)
+        os.kill(proc.pid, signal.SIGINT)
+
+        wait_on_condition(ContainerCountCondition(self.project, 0))
+
+
     def test_run_handles_sigterm(self):
         proc = start_process(self.base_dir, ['run', '-T', 'simple', 'top'])
         wait_on_condition(ContainerStateCondition(
