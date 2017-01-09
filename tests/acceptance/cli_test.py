@@ -71,12 +71,14 @@ def kill_service(service):
 
 class ContainerCountCondition(object):
 
-    def __init__(self, project, expected):
+    def __init__(self, project, expected, stopped=False, one_off=OneOffFilter.exclude):
         self.project = project
         self.expected = expected
+        self.stopped=stopped
+        self.one_off=one_off
 
     def __call__(self):
-        return len(self.project.containers()) == self.expected
+        return len(self.project.containers(stopped=self.stopped, one_off=self.one_off)) == self.expected
 
     def __str__(self):
         return "waiting for counter count == %s" % self.expected
@@ -1422,6 +1424,28 @@ class CLITestCase(DockerClientTestCase):
             self.project.client,
             'simplecomposefile_simple_run_1',
             'exited'))
+
+    def test_run_rm_handles_three_sigints(self):
+        proc = start_process(self.base_dir, ['run', '-T', '--rm', 'simple', 'top'])
+        wait_on_condition(ContainerStateCondition(
+            self.project.client,
+            'simplecomposefile_simple_run_1',
+            'running'))
+
+        #[container] = self.project.containers(service_names=['simple'])
+
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+        proc.send_signal(signal.SIGINT)
+
+        wait_on_condition(ContainerCountCondition(self.project, 0, stopped=True, one_off=OneOffFilter.include))
+
 
     def test_run_handles_sigterm(self):
         proc = start_process(self.base_dir, ['run', '-T', 'simple', 'top'])
